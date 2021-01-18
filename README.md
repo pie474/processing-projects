@@ -1,2 +1,2 @@
 # processing-projects
-This is a dump of some of my more interesting projects I've coded in Processing. Processing is just like Java, but has some good built in libraries that makes prototyping much faster.
+This is a dump of some of my more interesting projects I've coded in Processing. Processing uses the Java language but has a simple IDE and built in graphical libraries and mathematical functions that makes prototyping much quicker and easier.
