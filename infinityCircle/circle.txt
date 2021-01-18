@@ -1,0 +1,267 @@
+//all PVectors are (x, y, rot)
+
+Circle c, light;
+float[] image;
+
+void setup() {
+  size(700, 700);
+  
+  c = new Circle(100, width/2, height/2, 0.75, 0);
+  light = new Circle(5, c.getPos().x, c.getPos().y-50, 1, 255);
+  
+  ellipseMode(CENTER);
+  
+  
+  
+  
+  
+  image = new float[height];
+  
+  for(int i = 1; i <= height; i ++) {
+    background(0);
+    Ray r = new Ray(40, height/2, atan2(map(i, 1, height, c.getPos().y - c.getRadius(), 
+        c.getPos().y + c.getRadius()) - height/2, c.getPos().x - 40), 50);
+    //PVector[] points = c.intersect(r);
+    //fill(255);
+    r.showOrigin();
+    c.show();
+    light.show();
+    
+    float col = r.rayTrace(c, light);
+    stroke(col);
+    fill(col);
+    rect(0, 0, 100, 100);
+    
+    image[i-1] = col;
+  }
+  
+  //for(int i = 1; i <= height; i++) {
+  //  strokeWeight(1);
+  //  stroke((int)image[i-1]);
+  //  line(1, i, 30, i); 
+  //}
+}
+
+void draw() {
+  background(0);
+  for(int i = 1; i <= height; i++) {
+    strokeWeight(1);
+    stroke((int)image[i-1]);
+    line(1, i, 30, i); 
+  }
+  
+  
+  Ray r = new Ray(40, height/2, atan2(mouseY - height/2, mouseX - 40), 50);
+  
+  stroke(255);
+  float h = (c.getPos().x - r.getPos().x)*tan(r.getPos().z) + r.getPos().y;
+  float ref = map(h, c.getPos().y - c.getRadius(), c.getPos().y + c.getRadius(), 1, height);
+  line(31, ref, 37, ref);
+  
+  //PVector[] points = c.intersect(r);
+  //fill(255);
+  r.showOrigin();
+  c.show();
+  light.show();
+  
+  r.rayTrace(c, light);
+  
+  
+}
+
+
+
+class Circle {
+  private float radius;
+  private PVector pos;
+  private float transmission; //  0-1
+  private float brightness;
+  
+  Circle(float r, float x, float y, float trans, float bri) {
+    radius = r;
+    pos = new PVector(x, y);
+    transmission = trans;
+    brightness = bri;
+  }
+  
+  PVector[] intersect(Ray ray) {
+    /*
+    y=tan(ray.get(2)*(x - ray.get(0)) + ray.get(1)
+    (x-pos.get(0))^2 + (y-pos.get(1))^2 = radius^2
+    */
+    
+    PVector rayPos = ray.getPos();
+    
+    float a = rayPos.x;//350
+    float b = rayPos.y;//250
+    float c = rayPos.z;
+    float d = pos.x;//350
+    float e = pos.y - b;//100
+    float f = radius;//100
+    
+    float x1 = -cos(c)*(sqrt(sq(cos(c))*(sq(d)-sq(e))+2*sin(c)*cos(c)*d*e-sq(d)+sq(f))-cos(c)*d-sin(c)*e);
+    float x2 =  cos(c)*(sqrt(sq(cos(c))*(sq(d)-sq(e))+2*sin(c)*cos(c)*d*e-sq(d)+sq(f))+cos(c)*d+sin(c)*e);
+    //-cos(c)*(sqrt(sq(cos(c))*(sq(350)-sq(100))+2*sin(c)*cos(c)*350*100-sq(350)+sq(100))-cos(c)*350-sin(c)*100)
+    //-cos(c)*(sqrt(sq(cos(c))*112500+sin(2c)*35000-112500)-cos(c)*350-sin(c)*100)
+    //(364*sin(arctan(3.5)))  c=0
+    //350  c=pi
+    
+    
+    float y1 = tan(c)*(x1) + b;
+    float y2 = tan(c)*(x2) + b;
+    
+    PVector[] points = new PVector[2];
+    points[0] = new PVector(x1, y1);
+    points[1] = new PVector(x2, y2);
+
+    return points;
+  }
+  
+  float getTransmission() {
+    return transmission;
+  }
+  
+  float getBrightness() {
+    return brightness;
+  }
+  
+  float getRadius() {
+    return radius;
+  }
+  
+  
+  float sq(float x) {return x*x;}
+  
+  PVector getPos() {return pos;}
+  
+  void show() {
+    noFill();
+    stroke(255);
+    strokeWeight(3);
+    ellipse(pos.x, pos.y, 2*radius, 2*radius);
+  }
+}
+
+
+
+class Ray {
+  int maxBounces;
+  PVector pos;
+  
+  Ray(float x, float y, float a, int b) {
+    pos = new PVector(x, y, a);
+    maxBounces = b;
+  }
+  
+  PVector getPos() {
+    return pos;
+  }
+  
+  float rayTrace(Circle c, Circle light) {
+    for(int i = 1; i<=maxBounces; i++) {
+      PVector[] points = intersect(light);
+      if(points != null) {
+        float dist0 = sqrt((points[0].x-pos.x)*(points[0].x-pos.x) + (points[0].y-pos.y)*(points[0].y-pos.y));
+        float dist1 = sqrt((points[1].x-pos.x)*(points[1].x-pos.x) + (points[1].y-pos.y)*(points[1].y-pos.y));
+        
+        int farthest = 1;
+        if(dist1 > dist0) {farthest = 0;}
+        
+        PVector bouncePoint = points[farthest];
+        
+        
+        //stroke(200);
+        //fill(200);
+        //ellipse(bouncePoint.x, bouncePoint.y, 5, 5);
+        
+        stroke(100);
+        line(pos.x, pos.y, bouncePoint.x, bouncePoint.y);
+        
+        
+        float finalBrightness = light.getBrightness() * pow(c.getTransmission(), i);
+        return finalBrightness;
+      }
+      bounce(c);
+    }
+    return 0;
+  }
+  
+  PVector[] intersect(Circle c) {
+    float r = c.radius;
+    float lx1 = pos.x - c.getPos().x;
+    float ly1 = pos.y - c.getPos().y;
+    float lx2 = lx1 + 10*cos(pos.z);
+    float ly2 = ly1 + 10*sin(pos.z);
+    
+    float d_x = lx2-lx1;
+    float d_y = ly2-ly1;
+    float d_r = sqrt(d_x*d_x + d_y*d_y);
+    float D = lx1*ly2 - lx2*ly1;
+    float disc = r*r*d_r*d_r-D*D;
+    
+    if(disc<0) {
+      return null;
+    } else {
+    
+      float x1 = (D*d_y+sgn(d_y)*d_x*sqrt(disc))/(d_r*d_r) + c.getPos().x;
+      float x2 = (D*d_y-sgn(d_y)*d_x*sqrt(disc))/(d_r*d_r) + c.getPos().x;
+      
+      float y1 = (-D*d_x+abs(d_y)*sqrt(disc))/(d_r*d_r) + c.getPos().y;
+      float y2 = (-D*d_x-abs(d_y)*sqrt(disc))/(d_r*d_r) + c.getPos().y;
+      
+      PVector[] points = new PVector[2];
+      points[0] = new PVector(x1, y1);
+      points[1] = new PVector(x2, y2);
+      
+      return points;
+    }
+  }
+  
+  void bounce(Circle c) {
+    PVector[] points = intersect(c);
+    
+    if(points == null) {
+      return;
+    }
+    
+    //stroke(255);
+    //fill(255);
+    //ellipse(points[0].x, points[0].y, 5, 5);
+    //ellipse(points[1].x, points[1].y, 5, 5);
+    
+    float dist0 = sqrt((points[0].x-pos.x)*(points[0].x-pos.x) + (points[0].y-pos.y)*(points[0].y-pos.y));
+    float dist1 = sqrt((points[1].x-pos.x)*(points[1].x-pos.x) + (points[1].y-pos.y)*(points[1].y-pos.y));
+    
+    int farthest = 0;
+    if(dist0 == 0) {farthest = 1;}
+    else if(dist1 > dist0) {farthest = 1;}
+    
+    PVector bouncePoint = points[farthest];
+    
+    
+    //stroke(200);
+    //fill(200);
+    //ellipse(bouncePoint.x, bouncePoint.y, 5, 5);
+    
+    stroke(200);
+    line(pos.x, pos.y, bouncePoint.x, bouncePoint.y);
+    
+    float pointAngle = atan2(bouncePoint.y-c.getPos().x, bouncePoint.x-c.getPos().x);
+    float bounceAngle = 2*pointAngle - pos.z + PI;
+    
+   
+    pos.set(bouncePoint.x, bouncePoint.y, bounceAngle);    
+  }
+  
+  void showOrigin() {
+    fill(255);
+    ellipse(pos.x, pos.y, 5, 5);
+  }
+  
+  int sgn(float x) {
+    if(x<0) {return -1;}
+    else {return 1;}
+  }
+  
+}
+  
